@@ -9,8 +9,6 @@ void SysTick_Handler(void) {
 int main(void) {
   XMC_GPIO_SetMode(LED1, XMC_GPIO_MODE_OUTPUT_PUSH_PULL);
 
-  XMC_GPIO_ToggleOutput(LED1);
-
   /* System timer configuration */
   SysTick_Config(SystemCoreClock >> 1);
 

@@ -63,7 +63,7 @@ $(PROJ_NAME).elf: $(SRCS)
 
 define SEGGER_FLASH_SOFTDEVICE_CMD
 r
-loadbin main.bin 0x10001000
+loadbin $(PROJ_NAME).bin 0x10001000
 r
 g
 exit
