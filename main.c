@@ -1,13 +1,9 @@
 #include "xmc_gpio.h"
 
-#define LED1 P1_1
+#define LED1 P1_0
 
 void SysTick_Handler(void) {
   XMC_GPIO_ToggleOutput(LED1);
-}
-
-int _init(void) {
-
 }
 
 int main(void) {
@@ -21,4 +17,7 @@ int main(void) {
   while(1) {
     /* Infinite loop */
   }
+}
+
+int _init(void) {
 }

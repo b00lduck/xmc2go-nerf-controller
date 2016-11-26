@@ -56,8 +56,10 @@ proj: $(PROJ_NAME).elf
 
 $(PROJ_NAME).elf: $(SRCS)
 	$(CC) $(INC) $(DEVICE) $(CCFLAGS) $^ -o $@
+	$(STRIP) $@
 	$(OBJCOPY) -O ihex $(PROJ_NAME).elf $(PROJ_NAME).hex
 	$(OBJCOPY) -O binary $(PROJ_NAME).elf $(PROJ_NAME).bin
+
 
 define SEGGER_FLASH_SOFTDEVICE_CMD
 r
