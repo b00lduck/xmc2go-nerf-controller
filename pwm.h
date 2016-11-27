@@ -9,5 +9,5 @@ void enableMotor1();
 void disableMotor1();
 
 void initMotor2();
-void enableMotor2();
+void enableMotor2(int speed);
 void disableMotor2();

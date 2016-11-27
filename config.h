@@ -4,6 +4,7 @@
 #define LED2 P1_0
 #define MOTOR1 P0_6
 #define MOTOR2 P0_7
+#define MOTOR2_BRAKE P0_8
 #define POT1 P2_6
 
 #define BUTTON1 P2_9
@@ -16,3 +17,7 @@
 #define SLICE0_PTR CCU40_CC40
 #define SLICE0_NUMBER (0U)
 #define SLICE0_OUTPUT MOTOR1
+
+#define SLICE1_PTR CCU40_CC41
+#define SLICE1_NUMBER (1U)
+#define SLICE1_OUTPUT MOTOR2

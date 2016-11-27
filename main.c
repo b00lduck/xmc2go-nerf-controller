@@ -11,20 +11,19 @@
 
 int _init(void) {}
 
-void SysTick_Handler(void) {
-  XMC_GPIO_ToggleOutput(LED1);
-}
 
 int main(void) {
   XMC_GPIO_SetMode(LED1, XMC_GPIO_MODE_OUTPUT_PUSH_PULL);
   XMC_GPIO_SetMode(LED2, XMC_GPIO_MODE_OUTPUT_PUSH_PULL);
   XMC_GPIO_SetMode(MOTOR1, XMC_GPIO_MODE_OUTPUT_PUSH_PULL);
   XMC_GPIO_SetMode(MOTOR2, XMC_GPIO_MODE_OUTPUT_PUSH_PULL);
+  XMC_GPIO_SetMode(MOTOR2_BRAKE, XMC_GPIO_MODE_OUTPUT_PUSH_PULL);
 
   XMC_GPIO_SetOutputLow(LED1);
   XMC_GPIO_SetOutputLow(LED2);
   XMC_GPIO_SetOutputLow(MOTOR1);
   XMC_GPIO_SetOutputLow(MOTOR2);
+  XMC_GPIO_SetOutputLow(MOTOR2_BRAKE);
 
   XMC_GPIO_SetMode(BUTTON1, XMC_GPIO_MODE_INPUT_PULL_UP);
   XMC_GPIO_SetMode(BUTTON2, XMC_GPIO_MODE_INPUT_PULL_UP);
@@ -36,7 +35,7 @@ int main(void) {
 
 
   /* System timer configuration */
-  SysTick_Config(SystemCoreClock >> 4);
+  SysTick_Config(SystemCoreClock >> 6);
 
 
   XMC_SCU_CLOCK_CONFIG_t clock_config = {
@@ -97,13 +96,46 @@ int main(void) {
 	  XMC_CCU4_SLICE_SetTimerCompareMatch(SLICE0_PTR, 55000U - (result * 30));
 	  XMC_CCU4_EnableShadowTransfer(MODULE_PTR, (uint32_t)(XMC_CCU4_SHADOW_TRANSFER_SLICE_0|XMC_CCU4_SHADOW_TRANSFER_PRESCALER_SLICE_0));
 
-	  int rotors = XMC_GPIO_GetInput(BUTTON1);
-	  if (rotors != 1) {
-		  enableMotor1();
-	  } else {
-		  disableMotor1();
-	  }
+  }
 
+}
+
+uint8_t pusher_active = 0;
+uint8_t pusher_timer = 0;
+
+void SysTick_Handler(void) {
+  XMC_GPIO_ToggleOutput(LED1);
+
+  int rotors = XMC_GPIO_GetInput(BUTTON1);
+  if (rotors != 1) {
+	  enableMotor1();
+  } else {
+	  disableMotor1();
+  }
+
+
+  int trigger = XMC_GPIO_GetInput(BUTTON2);
+  int trigger_hold = XMC_GPIO_GetInput(BUTTON3);
+
+  if (!trigger > 0) {
+	  pusher_active = 1;
+  }
+
+  if (pusher_active == 1) {
+	  pusher_timer++;
+  } else {
+	  pusher_timer = 0;
+	  disableMotor2();
+  }
+
+  if (pusher_active && pusher_timer < 10) {
+	  enableMotor2(40000);
+  } else if (!trigger_hold) {
+	  enableMotor2(55000);
+  } else {
+	  pusher_active = 0;
+	  pusher_timer = 0;
+	  disableMotor2();
   }
 
 }
