@@ -46,6 +46,8 @@ SRCS = main.c
 SRCS += $(CMSIS)/Infineon/XMC1100_series/Source/GCC/startup_XMC1100.S
 SRCS += $(CMSIS)/Infineon/XMC1100_series/Source/system_XMC1100.c
 SRCS += $(XMCLIB)/src/xmc_gpio.c
+SRCS += $(XMCLIB)/src/xmc_ccu4.c
+SRCS += $(XMCLIB)/src/xmc1_scu.c
 SRCS += $(XMCLIB)/src/xmc1_gpio.c
 
 .PHONY: proj
