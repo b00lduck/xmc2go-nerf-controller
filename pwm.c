@@ -28,13 +28,6 @@ XMC_GPIO_CONFIG_t SLICE0_OUTPUT_config = {
 	  .output_level = XMC_GPIO_OUTPUT_LEVEL_LOW,
 };
 
-XMC_CCU4_SLICE_EVENT_CONFIG_t SLICE0_event0_config = {
-	  .mapped_input = XMC_CCU4_SLICE_INPUT_I, /* mapped to SCU.GSC40 */
-	  .edge = XMC_CCU4_SLICE_EVENT_EDGE_SENSITIVITY_RISING_EDGE,
-	  .level = XMC_CCU4_SLICE_EVENT_LEVEL_SENSITIVITY_ACTIVE_HIGH,
-	  .duration = XMC_CCU4_SLICE_EVENT_FILTER_3_CYCLES
-};
-
 void initPwm() {
 
 	  /* Enable clock, enable prescaler block and configure global control */
@@ -48,6 +41,7 @@ void initPwm() {
 	  XMC_CCU4_SetModuleClock(MODULE_PTR, XMC_CCU4_CLOCK_SCU);
 
 	  initMotor1();
+	  initMotor2();
 
 }
 
@@ -74,19 +68,12 @@ void initMotor1() {
 	  /* Enable shadow transfer */
 	  XMC_CCU4_EnableShadowTransfer(MODULE_PTR, (uint32_t)(XMC_CCU4_SHADOW_TRANSFER_SLICE_0|XMC_CCU4_SHADOW_TRANSFER_PRESCALER_SLICE_0));
 
-	  /* Enable External Start to Event 0 */
-	  XMC_CCU4_SLICE_ConfigureEvent(SLICE0_PTR, XMC_CCU4_SLICE_EVENT_0, &SLICE0_event0_config);
-	  XMC_CCU4_SLICE_StartConfig(SLICE0_PTR, XMC_CCU4_SLICE_EVENT_0, XMC_CCU4_SLICE_START_MODE_TIMER_START_CLEAR);
-
 	  enableMotor1();
 
 	  /* Get the slice out of idle mode */
 	  XMC_CCU4_EnableClock(MODULE_PTR, SLICE0_NUMBER);
 
 	  XMC_CCU4_SLICE_StartTimer(SLICE0_PTR);
-
-	  XMC_CCU4_SLICE_ConfigureEvent(SLICE0_PTR, XMC_CCU4_SLICE_EVENT_0, &SLICE0_event0_config);
-	  XMC_CCU4_SLICE_StartConfig(SLICE0_PTR, XMC_CCU4_SLICE_EVENT_0, XMC_CCU4_SLICE_START_MODE_TIMER_START_CLEAR);
 
 	  /* Enable CCU4 PWM output */
 	  XMC_GPIO_Init(SLICE0_OUTPUT, &SLICE0_OUTPUT_config);
