@@ -2,17 +2,12 @@
 #include <xmc_gpio.h>
 #include <xmc_scu.h>
 #include <xmc1_scu.h>
+#include <xmc_vadc.h>
+#include "pwm.h"
 
-#define LED1 P1_1
-#define LED2 P1_0
-#define MOTOR1 P0_6
-#define MOTOR2 P0_7
+#include "config.h"
 
-#define MODULE_PTR CCU40
-#define MODULE_NUMBER (0U)
-#define SLICE0_PTR CCU40_CC40
-#define SLICE0_NUMBER (0U)
-#define SLICE0_OUTPUT MOTOR1
+
 
 int _init(void) {}
 
@@ -23,14 +18,25 @@ void SysTick_Handler(void) {
 int main(void) {
   XMC_GPIO_SetMode(LED1, XMC_GPIO_MODE_OUTPUT_PUSH_PULL);
   XMC_GPIO_SetMode(LED2, XMC_GPIO_MODE_OUTPUT_PUSH_PULL);
+  XMC_GPIO_SetMode(MOTOR1, XMC_GPIO_MODE_OUTPUT_PUSH_PULL);
+  XMC_GPIO_SetMode(MOTOR2, XMC_GPIO_MODE_OUTPUT_PUSH_PULL);
 
   XMC_GPIO_SetOutputLow(LED1);
   XMC_GPIO_SetOutputLow(LED2);
+  XMC_GPIO_SetOutputLow(MOTOR1);
+  XMC_GPIO_SetOutputLow(MOTOR2);
+
+  XMC_GPIO_SetMode(BUTTON1, XMC_GPIO_MODE_INPUT_PULL_UP);
+  XMC_GPIO_SetMode(BUTTON2, XMC_GPIO_MODE_INPUT_PULL_UP);
+  XMC_GPIO_SetMode(BUTTON3, XMC_GPIO_MODE_INPUT_PULL_UP);
+
+  XMC_GPIO_EnableDigitalInput(BUTTON1);
+  XMC_GPIO_EnableDigitalInput(BUTTON2);
+  XMC_GPIO_EnableDigitalInput(BUTTON3);
+
 
   /* System timer configuration */
   SysTick_Config(SystemCoreClock >> 4);
-
-
 
 
   XMC_SCU_CLOCK_CONFIG_t clock_config = {
@@ -40,75 +46,66 @@ int main(void) {
 		  .idiv = 1,
   };
 
-  /* Prepare configuration */
-  XMC_CCU4_SLICE_COMPARE_CONFIG_t SLICE0_config = {
-		  .timer_mode = (uint32_t) XMC_CCU4_SLICE_TIMER_COUNT_MODE_EA,
-		  .monoshot = (uint32_t) false,
-		  .shadow_xfer_clear = (uint32_t) 0,
-		  .dither_timer_period = (uint32_t) 0,
-		  .dither_duty_cycle = (uint32_t) 0,
-		  .prescaler_mode = (uint32_t) XMC_CCU4_SLICE_PRESCALER_MODE_NORMAL,
-		  .mcm_enable = (uint32_t) 0,
-		  .prescaler_initval = (uint32_t) 4, /* in this case, prescaler = 2^10 */
-		  .float_limit = (uint32_t) 0,
-		  .dither_limit = (uint32_t) 0,
-		  .passive_level = (uint32_t) XMC_CCU4_SLICE_OUTPUT_PASSIVE_LEVEL_LOW,
-		  .timer_concatenation = (uint32_t) 0
-  };
-
-  XMC_GPIO_CONFIG_t SLICE0_OUTPUT_config = {
-		  .mode = XMC_GPIO_MODE_OUTPUT_PUSH_PULL_ALT4,
-		  .input_hysteresis = XMC_GPIO_INPUT_HYSTERESIS_STANDARD,
-		  .output_level = XMC_GPIO_OUTPUT_LEVEL_LOW,
-  };
-
-  XMC_CCU4_SLICE_EVENT_CONFIG_t SLICE0_event0_config = {
-		  .mapped_input = XMC_CCU4_SLICE_INPUT_I, /* mapped to SCU.GSC40 */
-		  .edge = XMC_CCU4_SLICE_EVENT_EDGE_SENSITIVITY_RISING_EDGE,
-		  .level = XMC_CCU4_SLICE_EVENT_LEVEL_SENSITIVITY_ACTIVE_HIGH,
-		  .duration = XMC_CCU4_SLICE_EVENT_FILTER_3_CYCLES
-  };
-
-
   /* Ensure clock frequency is set at 64MHz (2*MCLK) */
   XMC_SCU_CLOCK_Init(&clock_config);
 
-  /* Enable clock, enable prescaler block and configure global control */
-  XMC_CCU4_Init(MODULE_PTR, XMC_CCU4_SLICE_MCMS_ACTION_TRANSFER_PR_CR);
+  initPwm();
 
-  /* Start the prescaler and restore clocks to slices */
-  XMC_CCU4_StartPrescaler(MODULE_PTR);
 
-  /* Start of CCU4 configurations */
-  /* Ensure fCCU reaches CCU40 */
-  XMC_CCU4_SetModuleClock(MODULE_PTR, XMC_CCU4_CLOCK_SCU);
+  // *******************
+  // ADC
+  // *******************
 
-  /* Initialize the Slice */
-  XMC_CCU4_SLICE_CompareInit(SLICE0_PTR, &SLICE0_config);
 
-  /* Program duty cycle = 33.33% at 1Hz frequency */
-  XMC_CCU4_SLICE_SetTimerCompareMatch(SLICE0_PTR, 60000U);
-  XMC_CCU4_SLICE_SetTimerPeriodMatch(SLICE0_PTR, 62499U);
+  XMC_VADC_GLOBAL_CONFIG_t adc_glob_handl = {
+		  .class1 = {
+				  .conversion_mode_standard = XMC_VADC_CONVMODE_8BIT,
+				  .sample_time_std_conv = 3,
+		  }
+  };
 
-  /* Enable shadow transfer */
-  XMC_CCU4_EnableShadowTransfer(MODULE_PTR, (uint32_t)(XMC_CCU4_SHADOW_TRANSFER_SLICE_0|XMC_CCU4_SHADOW_TRANSFER_PRESCALER_SLICE_0));
+  XMC_VADC_CHANNEL_CONFIG_t adc_ch_handl = {
+		  .alias_channel=-1,
+		  .input_class=XMC_VADC_CHANNEL_CONV_GROUP_CLASS1,
+		  .result_reg_number=7,
+		  .result_alignment=XMC_VADC_RESULT_ALIGN_RIGHT,
+  };
 
-  /* Enable External Start to Event 0 */
-  XMC_CCU4_SLICE_ConfigureEvent(SLICE0_PTR, XMC_CCU4_SLICE_EVENT_0, &SLICE0_event0_config);
-  XMC_CCU4_SLICE_StartConfig(SLICE0_PTR, XMC_CCU4_SLICE_EVENT_0, XMC_CCU4_SLICE_START_MODE_TIMER_START_CLEAR);
+  XMC_VADC_SCAN_CONFIG_t adc_bg_handl={
+		  .conv_start_mode= XMC_VADC_STARTMODE_WFS,
+  };
 
-  /* Enable CCU4 PWM output */
-  XMC_GPIO_Init(SLICE0_OUTPUT, &SLICE0_OUTPUT_config);
+  XMC_VADC_GLOBAL_Init(VADC, &adc_glob_handl);
+  XMC_VADC_GLOBAL_StartupCalibration(VADC);
+  XMC_VADC_GLOBAL_BackgroundInit(VADC, &adc_bg_handl) ;
+  XMC_VADC_GLOBAL_BackgroundAddChannelToSequence(VADC, 0, 0);
+  XMC_VADC_GLOBAL_BackgroundEnableContinuousMode(VADC);
+  XMC_VADC_GLOBAL_BackgroundTriggerConversion(VADC);
 
-  /* Get the slice out of idle mode */
-  XMC_CCU4_EnableClock(MODULE_PTR, SLICE0_NUMBER);
-
-  XMC_CCU4_SLICE_StartTimer(SLICE0_PTR);
+  XMC_CCU4_SLICE_SetTimerCompareMatch(SLICE0_PTR, 62499U);
 
 
   while(1) {
-    /* Infinite loop */
+
+	  int globres = XMC_VADC_GLOBAL_GetDetailedResult(VADC);
+
+	  while ((globres & 0x80000000) == 0); // Wait until new result write int the RESULT bits.
+	  int group = (globres & 0xF0000) >> 16; // See which group happened the conversion.
+	  int channel = (globres & 0x1F00000) >> 20; // See which channel happened the conversion.
+	  int result = (globres & 0xFFFF) >> 2; // Store result in a variable.
+
+	  XMC_CCU4_SLICE_SetTimerCompareMatch(SLICE0_PTR, 55000U - (result * 30));
+	  XMC_CCU4_EnableShadowTransfer(MODULE_PTR, (uint32_t)(XMC_CCU4_SHADOW_TRANSFER_SLICE_0|XMC_CCU4_SHADOW_TRANSFER_PRESCALER_SLICE_0));
+
+	  int rotors = XMC_GPIO_GetInput(BUTTON1);
+	  if (rotors != 1) {
+		  enableMotor1();
+	  } else {
+		  disableMotor1();
+	  }
+
   }
+
 }
 
 void CCU40_1_IRQHandler(void) {

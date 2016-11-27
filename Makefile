@@ -20,35 +20,15 @@ JLINKOPT = -device xmc1100-64 -if SWD -speed 400
 DEVICE=-DXMC1100_Q024x0064
 
 CCFLAGS=-mcpu=cortex-m0 -mthumb -g --specs=nosys.specs -nostartfiles -T$(CMSIS)/Infineon/XMC1100_series/Source/GCC/XMC1100x0064.ld 
-#LDFLAGS=$(LIBSPEC) -lc --cref
-	 
-# List the object files involved in this project
-#OBJS=main.o startup.o system.o syscall.o
-
-#TARGET=main
-#all: $(OBJS) $(TARGET).bin $(TARGET).hex
-
-#$(TARGET).elf: $(OBJS)
-#	$(LD) $(OBJS) $(LDFLAGS) -Map $(TARGET).map -nostartfiles -o $@
-
-#%.bin: %.elf
-#	$(OBJCOPY) -O binary $< $@
-#%.hex: %.elf
-#	$(OBJCOPY) -O ihex $< $@
-
-# compile the source 
-#%.o: %.c
-#	$(CC) $(INC) $(DEVICE) -c $(CCFLAGS) -o $@ $<
-#	$(STRIP) $@
 	
-	
-SRCS = main.c
+SRCS = main.c pwm.c
 SRCS += $(CMSIS)/Infineon/XMC1100_series/Source/GCC/startup_XMC1100.S
 SRCS += $(CMSIS)/Infineon/XMC1100_series/Source/system_XMC1100.c
 SRCS += $(XMCLIB)/src/xmc_gpio.c
 SRCS += $(XMCLIB)/src/xmc_ccu4.c
 SRCS += $(XMCLIB)/src/xmc1_scu.c
 SRCS += $(XMCLIB)/src/xmc1_gpio.c
+SRCS += $(XMCLIB)/src/xmc_vadc.c
 
 .PHONY: proj
 
