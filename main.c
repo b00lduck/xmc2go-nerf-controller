@@ -5,14 +5,14 @@
 
 #define LED1 P1_1
 #define LED2 P1_0
+#define MOTOR1 P0_6
+#define MOTOR2 P0_7
 
 #define MODULE_PTR CCU40
 #define MODULE_NUMBER (0U)
 #define SLICE0_PTR CCU40_CC40
 #define SLICE0_NUMBER (0U)
-#define SLICE0_OUTPUT LED2
-
-#define CALCULATE_PERIOD(interval_in_ms) ((15625 * interval_in_ms) / 1000) /* f=64MHz; Prescaler set to 4096 */
+#define SLICE0_OUTPUT MOTOR1
 
 int _init(void) {}
 
@@ -57,7 +57,7 @@ int main(void) {
   };
 
   XMC_GPIO_CONFIG_t SLICE0_OUTPUT_config = {
-		  .mode = XMC_GPIO_MODE_OUTPUT_PUSH_PULL_ALT2,
+		  .mode = XMC_GPIO_MODE_OUTPUT_PUSH_PULL_ALT4,
 		  .input_hysteresis = XMC_GPIO_INPUT_HYSTERESIS_STANDARD,
 		  .output_level = XMC_GPIO_OUTPUT_LEVEL_LOW,
   };
