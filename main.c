@@ -100,8 +100,9 @@ int main(void) {
 
 }
 
-uint8_t pusher_active = 0;
-uint8_t pusher_timer = 0;
+uint8_t trigger_running = 0;
+uint8_t trigger_init = 0;
+uint8_t old_trigger_hold = 0;
 
 void SysTick_Handler(void) {
   XMC_GPIO_ToggleOutput(LED1);
@@ -113,30 +114,34 @@ void SysTick_Handler(void) {
 	  disableMotor1();
   }
 
+  int trigger = !XMC_GPIO_GetInput(BUTTON2);
+  int trigger_hold = !XMC_GPIO_GetInput(BUTTON3);
 
-  int trigger = XMC_GPIO_GetInput(BUTTON2);
-  int trigger_hold = XMC_GPIO_GetInput(BUTTON3);
 
-  if (!trigger > 0) {
-	  pusher_active = 1;
+  if (!trigger_running && trigger_hold) {
+	  trigger_init = 1;
+	  trigger_running = 0;
   }
 
-  if (pusher_active == 1) {
-	  pusher_timer++;
-  } else {
-	  pusher_timer = 0;
-	  disableMotor2();
+  if (!trigger_hold && trigger && !trigger_running) {
+	  trigger_running = 1;
+	  trigger_init = 0;
   }
 
-  if (pusher_active && pusher_timer < 10) {
+  if (old_trigger_hold && !trigger_hold) {
+	  trigger_running = 0;
+	  trigger_init = 0;
+  }
+
+  if (trigger_running) {
 	  enableMotor2(40000);
-  } else if (!trigger_hold) {
-	  enableMotor2(55000);
+  } else if (trigger_init) {
+	  enableMotor2(40000);
   } else {
-	  pusher_active = 0;
-	  pusher_timer = 0;
 	  disableMotor2();
   }
+
+  old_trigger_hold = trigger_hold;
 
 }
 
