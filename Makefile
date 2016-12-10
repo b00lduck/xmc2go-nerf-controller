@@ -21,7 +21,7 @@ DEVICE=-DXMC1100_Q024x0064
 
 CCFLAGS=-mcpu=cortex-m0 -mthumb -g --specs=nosys.specs -nostartfiles -T$(CMSIS)/Infineon/XMC1100_series/Source/GCC/XMC1100x0064.ld 
 	
-SRCS = main.c pwm.c adc.c stubs.c
+SRCS = main.c pwm.c adc.c stubs.c rpm.c
 SRCS += $(CMSIS)/Infineon/XMC1100_series/Source/GCC/startup_XMC1100.S
 SRCS += $(CMSIS)/Infineon/XMC1100_series/Source/system_XMC1100.c
 SRCS += $(XMCLIB)/src/xmc_gpio.c
