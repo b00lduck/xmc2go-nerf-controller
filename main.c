@@ -10,6 +10,8 @@
 int rotors = 0;
 
 int main(void) {
+
+  // Configure GPIOs
   XMC_GPIO_SetMode(LED1, XMC_GPIO_MODE_OUTPUT_PUSH_PULL);
   XMC_GPIO_SetMode(LED2, XMC_GPIO_MODE_OUTPUT_PUSH_PULL);
   XMC_GPIO_SetMode(MOTOR1, XMC_GPIO_MODE_OUTPUT_PUSH_PULL);
@@ -34,27 +36,23 @@ int main(void) {
   XMC_GPIO_EnableDigitalInput(MOTOR1_TACHOMETER);
   XMC_GPIO_EnableDigitalInput(MOTOR2_TACHOMETER);
 
+  // Configure SysTick
   SysTick_Config(SystemCoreClock / SYSTICKS_PER_SECOND);
-
   XMC_SCU_CLOCK_CONFIG_t clock_config = {
 		  .pclk_src = XMC_SCU_CLOCK_PCLKSRC_DOUBLE_MCLK,
 		  .rtc_src = XMC_SCU_CLOCK_RTCCLKSRC_DCO2,
 		  .fdiv = 0,
 		  .idiv = 1,
   };
-
   XMC_SCU_CLOCK_Init(&clock_config);
 
   initPwm();
-
   initAdc();
-
   initRpm();
 
-
-  uint8_t trigger_running = 0;
-  uint8_t trigger_init = 0;
-  uint8_t old_trigger_hold = 0;
+//  uint8_t trigger_running = 0;
+//  uint8_t trigger_init = 0;
+//  uint8_t old_trigger_hold = 0;
 
   while(1) {
 
@@ -99,8 +97,6 @@ int main(void) {
   }
 
 }
-
-
 
 void SysTick_Handler(void) {
 	advanceRpmCounter();
