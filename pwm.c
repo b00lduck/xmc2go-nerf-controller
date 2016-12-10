@@ -15,10 +15,10 @@ XMC_CCU4_SLICE_COMPARE_CONFIG_t SLICE_config = {
 	  .dither_duty_cycle = (uint32_t) 0,
 	  .prescaler_mode = (uint32_t) XMC_CCU4_SLICE_PRESCALER_MODE_NORMAL,
 	  .mcm_enable = (uint32_t) 0,
-	  .prescaler_initval = (uint32_t) 1, /* in this case, prescaler = 2^10 */
+	  .prescaler_initval = (uint32_t) 1,
 	  .float_limit = (uint32_t) 0,
 	  .dither_limit = (uint32_t) 0,
-	  .passive_level = (uint32_t) XMC_CCU4_SLICE_OUTPUT_PASSIVE_LEVEL_LOW,
+	  .passive_level = (uint32_t) XMC_CCU4_SLICE_OUTPUT_PASSIVE_LEVEL_HIGH,
 	  .timer_concatenation = (uint32_t) 0
 };
 
@@ -28,6 +28,11 @@ XMC_GPIO_CONFIG_t SLICE_OUTPUT_config = {
 	  .output_level = XMC_GPIO_OUTPUT_LEVEL_LOW,
 };
 
+int speedFloatToInt(float speed) {
+	if (speed > 1.0) speed = 1.0;
+	if (speed < 0.0) speed = 0.0;
+	return TIMER_PERIOD * speed;
+}
 
 void initPwm() {
 
@@ -47,71 +52,70 @@ void initPwm() {
 }
 
 void initMotor1() {
-
-	  /* Initialize the Slice */
 	  XMC_CCU4_SLICE_CompareInit(SLICE0_PTR, &SLICE_config);
-
-	  /* Program duty cycle = 33.33% at 1Hz frequency */
-	  XMC_CCU4_SLICE_SetTimerCompareMatch(SLICE0_PTR, 65499U);
-	  XMC_CCU4_SLICE_SetTimerPeriodMatch(SLICE0_PTR, 65499U);
-
-	  /* Enable shadow transfer */
-	  XMC_CCU4_EnableShadowTransfer(MODULE_PTR, (uint32_t)(XMC_CCU4_SHADOW_TRANSFER_SLICE_0|XMC_CCU4_SHADOW_TRANSFER_PRESCALER_SLICE_0));
-
-	  enableMotor1();
-
-	  /* Get the slice out of idle mode */
+	  XMC_CCU4_SLICE_SetTimerPeriodMatch(SLICE0_PTR, TIMER_PERIOD);
+	  XMC_CCU4_EnableShadowTransfer(MODULE_PTR, (uint32_t)(XMC_CCU4_SHADOW_TRANSFER_SLICE_0));
+	  enableMotor1(TIMER_PERIOD-1);
 	  XMC_CCU4_EnableClock(MODULE_PTR, SLICE0_NUMBER);
-
 	  XMC_CCU4_SLICE_StartTimer(SLICE0_PTR);
-
 }
 
-void enableMotor1() {
-	  XMC_GPIO_Init(SLICE0_OUTPUT, &SLICE_OUTPUT_config);
+int motor1enabled = 0;
+void enableMotor1(float speed) {
+	XMC_CCU4_SLICE_SetTimerCompareMatch(SLICE0_PTR, speedFloatToInt(speed));
+	XMC_CCU4_EnableShadowTransfer(MODULE_PTR, (uint32_t)(XMC_CCU4_SHADOW_TRANSFER_SLICE_0));
+	if (!motor1enabled) {
+		motor1enabled = 1;
+		XMC_GPIO_Init(SLICE0_OUTPUT, &SLICE_OUTPUT_config);
+	}
 }
 
 void disableMotor1() {
+	  motor1enabled = 0;
 	  XMC_GPIO_SetMode(SLICE0_OUTPUT, XMC_GPIO_MODE_OUTPUT_PUSH_PULL);
 	  XMC_GPIO_SetOutputLow(SLICE0_OUTPUT);
 }
 
 void initMotor2() {
-	  /* Initialize the Slice */
 	  XMC_CCU4_SLICE_CompareInit(SLICE1_PTR, &SLICE_config);
-
-	  /* Program duty cycle = 33.33% at 1Hz frequency */
-	  XMC_CCU4_SLICE_SetTimerCompareMatch(SLICE1_PTR, 50000U);
-	  XMC_CCU4_SLICE_SetTimerPeriodMatch(SLICE1_PTR, 65499U);
-
-	  /* Enable shadow transfer */
-	  XMC_CCU4_EnableShadowTransfer(MODULE_PTR, (uint32_t)(XMC_CCU4_SHADOW_TRANSFER_SLICE_1|XMC_CCU4_SHADOW_TRANSFER_PRESCALER_SLICE_1));
-
-	  enableMotor2(65499U);
-
-	  /* Get the slice out of idle mode */
+	  XMC_CCU4_SLICE_SetTimerPeriodMatch(SLICE1_PTR, TIMER_PERIOD);
+	  XMC_CCU4_EnableShadowTransfer(MODULE_PTR, (uint32_t)(XMC_CCU4_SHADOW_TRANSFER_SLICE_1));
+	  enableMotor2(TIMER_PERIOD-1);
 	  XMC_CCU4_EnableClock(MODULE_PTR, SLICE1_NUMBER);
-
 	  XMC_CCU4_SLICE_StartTimer(SLICE1_PTR);
 }
 
-void enableMotor2(int speed) {
-	  XMC_GPIO_SetOutputLow(MOTOR2_BRAKE);
-
-	  /* Program duty cycle = 33.33% at 1Hz frequency */
-	  XMC_CCU4_SLICE_SetTimerCompareMatch(SLICE1_PTR, speed);
-	  XMC_CCU4_SLICE_SetTimerPeriodMatch(SLICE1_PTR, 65499U);
-
-	  /* Enable shadow transfer */
-	  XMC_CCU4_EnableShadowTransfer(MODULE_PTR, (uint32_t)(XMC_CCU4_SHADOW_TRANSFER_SLICE_1|XMC_CCU4_SHADOW_TRANSFER_PRESCALER_SLICE_1));
-
-	  XMC_GPIO_Init(SLICE1_OUTPUT, &SLICE_OUTPUT_config);
-
-
+int motor2enabled = 0;
+void enableMotor2(float speed) {
+	XMC_CCU4_SLICE_SetTimerCompareMatch(SLICE1_PTR, speedFloatToInt(speed));
+	XMC_CCU4_EnableShadowTransfer(MODULE_PTR, (uint32_t)(XMC_CCU4_SHADOW_TRANSFER_SLICE_1));
+	if (!motor2enabled) {
+		motor2enabled = 1;
+		XMC_GPIO_Init(SLICE1_OUTPUT, &SLICE_OUTPUT_config);
+	}
 }
 
 void disableMotor2() {
-	  XMC_GPIO_SetMode(SLICE1_OUTPUT, XMC_GPIO_MODE_OUTPUT_PUSH_PULL);
-	  XMC_GPIO_SetOutputLow(SLICE1_OUTPUT);
-	  XMC_GPIO_SetOutputHigh(MOTOR2_BRAKE);
+	motor2enabled = 0;
+	XMC_GPIO_SetMode(SLICE1_OUTPUT, XMC_GPIO_MODE_OUTPUT_PUSH_PULL);
+	XMC_GPIO_SetOutputLow(SLICE1_OUTPUT);
 }
+
+/*
+void enableMotor3(int speed) {
+	XMC_CCU4_SLICE_SetTimerCompareMatch(SLICE1_PTR, speed);
+	XMC_CCU4_EnableShadowTransfer(MODULE_PTR, (uint32_t)(XMC_CCU4_SHADOW_TRANSFER_SLICE_1));
+	if (!motor2enabled) {
+		motor2enabled = 1;
+		XMC_GPIO_SetOutputLow(MOTOR3_BRAKE);
+		XMC_GPIO_Init(SLICE1_OUTPUT, &SLICE_OUTPUT_config);
+	}
+}
+
+void disableMotor3() {
+	motor2enabled = 0;
+	XMC_GPIO_SetMode(SLICE1_OUTPUT, XMC_GPIO_MODE_OUTPUT_PUSH_PULL);
+	XMC_GPIO_SetOutputLow(SLICE1_OUTPUT);
+	XMC_GPIO_SetOutputHigh(MOTOR3_BRAKE);
+}
+*/

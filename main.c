@@ -2,14 +2,29 @@
 #include <xmc_gpio.h>
 #include <xmc_scu.h>
 #include <xmc1_scu.h>
-#include <xmc_vadc.h>
+#include <xmc_eru.h>
 #include "pwm.h"
+#include "adc.h"
 
 #include "config.h"
 
+void stall();
 
+int rotors = 0;
 
-int _init(void) {}
+float desired_value = 0;
+
+int stalled = 0;
+
+#define SYSTICK_SHIFTER 16
+#define SYSTICKS_PER_SECOND (1 << SYSTICK_SHIFTER)
+#define SYSTICKS_PER_MINUTE (SYSTICKS_PER_SECOND * 60.0)
+
+float motor1_rpm = 0;
+float motor2_rpm = 0;
+
+uint32_t motor1_rotation_time = 0;
+uint32_t motor2_rotation_time = 0;
 
 
 int main(void) {
@@ -17,26 +32,27 @@ int main(void) {
   XMC_GPIO_SetMode(LED2, XMC_GPIO_MODE_OUTPUT_PUSH_PULL);
   XMC_GPIO_SetMode(MOTOR1, XMC_GPIO_MODE_OUTPUT_PUSH_PULL);
   XMC_GPIO_SetMode(MOTOR2, XMC_GPIO_MODE_OUTPUT_PUSH_PULL);
-  XMC_GPIO_SetMode(MOTOR2_BRAKE, XMC_GPIO_MODE_OUTPUT_PUSH_PULL);
+  XMC_GPIO_SetMode(MOTOR3_BRAKE, XMC_GPIO_MODE_OUTPUT_PUSH_PULL);
 
   XMC_GPIO_SetOutputLow(LED1);
   XMC_GPIO_SetOutputLow(LED2);
   XMC_GPIO_SetOutputLow(MOTOR1);
   XMC_GPIO_SetOutputLow(MOTOR2);
-  XMC_GPIO_SetOutputLow(MOTOR2_BRAKE);
+  XMC_GPIO_SetOutputLow(MOTOR3_BRAKE);
 
   XMC_GPIO_SetMode(BUTTON1, XMC_GPIO_MODE_INPUT_PULL_UP);
   XMC_GPIO_SetMode(BUTTON2, XMC_GPIO_MODE_INPUT_PULL_UP);
   XMC_GPIO_SetMode(BUTTON3, XMC_GPIO_MODE_INPUT_PULL_UP);
+  XMC_GPIO_SetMode(MOTOR1_TACHOMETER, XMC_GPIO_MODE_INPUT_PULL_UP);
+  XMC_GPIO_SetMode(MOTOR2_TACHOMETER, XMC_GPIO_MODE_INPUT_PULL_UP);
 
   XMC_GPIO_EnableDigitalInput(BUTTON1);
   XMC_GPIO_EnableDigitalInput(BUTTON2);
   XMC_GPIO_EnableDigitalInput(BUTTON3);
+  XMC_GPIO_EnableDigitalInput(MOTOR1_TACHOMETER);
+  XMC_GPIO_EnableDigitalInput(MOTOR2_TACHOMETER);
 
-
-  /* System timer configuration */
-  SysTick_Config(SystemCoreClock >> 6);
-
+  SysTick_Config(SystemCoreClock / SYSTICKS_PER_SECOND);
 
   XMC_SCU_CLOCK_CONFIG_t clock_config = {
 		  .pclk_src = XMC_SCU_CLOCK_PCLKSRC_DOUBLE_MCLK,
@@ -45,107 +61,138 @@ int main(void) {
 		  .idiv = 1,
   };
 
-  /* Ensure clock frequency is set at 64MHz (2*MCLK) */
   XMC_SCU_CLOCK_Init(&clock_config);
 
   initPwm();
 
+  initAdc();
 
-  // *******************
-  // ADC
-  // *******************
-
-
-  XMC_VADC_GLOBAL_CONFIG_t adc_glob_handl = {
-		  .class1 = {
-				  .conversion_mode_standard = XMC_VADC_CONVMODE_8BIT,
-				  .sample_time_std_conv = 3,
-		  }
+  // init interrupt
+  XMC_ERU_ETL_CONFIG_t eruInit1 = {
+		  .input_a = MOTOR1_TACHOMETER_ERU_INPUT,
+		  .edge_detection = XMC_ERU_ETL_EDGE_DETECTION_FALLING,
+		  .enable_output_trigger = true,
+		  .output_trigger_channel = XMC_ERU_ETL_OUTPUT_TRIGGER_CHANNEL0,
+		  .source = XMC_ERU_ETL_SOURCE_A
   };
 
-  XMC_VADC_CHANNEL_CONFIG_t adc_ch_handl = {
-		  .alias_channel=-1,
-		  .input_class=XMC_VADC_CHANNEL_CONV_GROUP_CLASS1,
-		  .result_reg_number=7,
-		  .result_alignment=XMC_VADC_RESULT_ALIGN_RIGHT,
+  XMC_ERU_ETL_CONFIG_t eruInit2 = {
+		  .input_a = MOTOR2_TACHOMETER_ERU_INPUT,
+		  .edge_detection = XMC_ERU_ETL_EDGE_DETECTION_FALLING,
+		  .enable_output_trigger = true,
+		  .output_trigger_channel = XMC_ERU_ETL_OUTPUT_TRIGGER_CHANNEL1,
+		  .source = XMC_ERU_ETL_SOURCE_B
   };
 
-  XMC_VADC_SCAN_CONFIG_t adc_bg_handl={
-		  .conv_start_mode= XMC_VADC_STARTMODE_WFS,
+
+  XMC_ERU_OGU_CONFIG_t oguInit = {
+		  .service_request = true
   };
 
-  XMC_VADC_GLOBAL_Init(VADC, &adc_glob_handl);
-  XMC_VADC_GLOBAL_StartupCalibration(VADC);
-  XMC_VADC_GLOBAL_BackgroundInit(VADC, &adc_bg_handl) ;
-  XMC_VADC_GLOBAL_BackgroundAddChannelToSequence(VADC, 0, 0);
-  XMC_VADC_GLOBAL_BackgroundEnableContinuousMode(VADC);
-  XMC_VADC_GLOBAL_BackgroundTriggerConversion(VADC);
+  XMC_ERU_ETL_Init(MOTOR1_TACHOMETER_ERU_ETL, &eruInit1);
+  XMC_ERU_OGU_Init(MOTOR1_TACHOMETER_ERU_OGU, &oguInit);
 
-  XMC_CCU4_SLICE_SetTimerCompareMatch(SLICE0_PTR, 62499U);
+  XMC_ERU_ETL_Init(MOTOR2_TACHOMETER_ERU_ETL, &eruInit2);
+  XMC_ERU_OGU_Init(MOTOR2_TACHOMETER_ERU_OGU, &oguInit);
 
+  NVIC_SetPriority(MOTOR1_TACHOMETER_ERU_IRQ, 15);
+  NVIC_EnableIRQ(MOTOR1_TACHOMETER_ERU_IRQ);
+
+  NVIC_SetPriority(MOTOR2_TACHOMETER_ERU_IRQ, 13);
+  NVIC_EnableIRQ(MOTOR2_TACHOMETER_ERU_IRQ);
+
+
+  uint8_t trigger_running = 0;
+  uint8_t trigger_init = 0;
+  uint8_t old_trigger_hold = 0;
 
   while(1) {
 
-	  int globres = XMC_VADC_GLOBAL_GetDetailedResult(VADC);
+	float foo = (float)adcGetPotBlocking() / 1024.0;
+	desired_value = foo * 23000.0;
 
-	  while ((globres & 0x80000000) == 0); // Wait until new result write int the RESULT bits.
-	  int group = (globres & 0xF0000) >> 16; // See which group happened the conversion.
-	  int channel = (globres & 0x1F00000) >> 20; // See which channel happened the conversion.
-	  int result = (globres & 0xFFFF) >> 2; // Store result in a variable.
 
-	  XMC_CCU4_SLICE_SetTimerCompareMatch(SLICE0_PTR, 55000U - (result * 30));
-	  XMC_CCU4_EnableShadowTransfer(MODULE_PTR, (uint32_t)(XMC_CCU4_SHADOW_TRANSFER_SLICE_0|XMC_CCU4_SHADOW_TRANSFER_PRESCALER_SLICE_0));
 
+   	if (desired_value < 500) {
+	  stalled = 0;
+	  disableMotor1();
+	  disableMotor2();
+    } else if (((motor1_rotation_time >= SYSTICKS_PER_SECOND) ||
+    	  (motor2_rotation_time >= SYSTICKS_PER_SECOND)) &&
+		(desired_value > 1500)) {
+      stall();
+	}
+
+  	if (!stalled) {
+		float output1 = 0.0001 * (desired_value - motor1_rpm);
+		enableMotor1(output1);
+		float output2 = 0.0001 * (desired_value - motor2_rpm);
+		enableMotor2(output2);
+  	}
+
+
+	  //rotors = XMC_GPIO_GetInput(BUTTON1);
+	  //if (rotors != 1) {
+		  //enableMotor1();
+	  //} else {
+	  //	  disableMotor1();
+	  //}
+
+		  /*
+	  int trigger = !XMC_GPIO_GetInput(BUTTON2);
+	  int trigger_hold = !XMC_GPIO_GetInput(BUTTON3);
+
+	  if (!trigger_running && trigger_hold) {
+		  trigger_init = 1;
+		  trigger_running = 0;
+	  }
+
+	  if (!trigger_hold && trigger && !trigger_running) {
+		  trigger_running = 1;
+		  trigger_init = 0;
+	  }
+
+	  if (old_trigger_hold && !trigger_hold) {
+		  trigger_running = 0;
+		  trigger_init = 0;
+	  }
+
+	  if (trigger_running || trigger_init) {
+		  enableMotor2(40000);
+	  } else {
+		  disableMotor2();
+	  }
+
+	  old_trigger_hold = trigger_hold;
+	  */
   }
 
 }
 
-uint8_t trigger_running = 0;
-uint8_t trigger_init = 0;
-uint8_t old_trigger_hold = 0;
+void ERU0_0_IRQHandler(void) {
+	motor1_rpm = SYSTICKS_PER_MINUTE / (float)motor1_rotation_time;
+	motor1_rotation_time = 0;
+	XMC_GPIO_ToggleOutput(LED1);
+}
+
+void ERU0_1_IRQHandler(void) {
+	motor2_rpm = SYSTICKS_PER_MINUTE / (float)motor2_rotation_time;
+	motor2_rotation_time = 0;
+	XMC_GPIO_ToggleOutput(LED2);
+}
+
+void stall() {
+	motor1_rotation_time = 0;
+	motor1_rpm = 0;
+	motor2_rotation_time = 0;
+	motor2_rpm = 0;
+	stalled = 1;
+	disableMotor1();
+	disableMotor2();
+}
 
 void SysTick_Handler(void) {
-  XMC_GPIO_ToggleOutput(LED1);
-
-  int rotors = XMC_GPIO_GetInput(BUTTON1);
-  if (rotors != 1) {
-	  enableMotor1();
-  } else {
-	  disableMotor1();
-  }
-
-  int trigger = !XMC_GPIO_GetInput(BUTTON2);
-  int trigger_hold = !XMC_GPIO_GetInput(BUTTON3);
-
-
-  if (!trigger_running && trigger_hold) {
-	  trigger_init = 1;
-	  trigger_running = 0;
-  }
-
-  if (!trigger_hold && trigger && !trigger_running) {
-	  trigger_running = 1;
-	  trigger_init = 0;
-  }
-
-  if (old_trigger_hold && !trigger_hold) {
-	  trigger_running = 0;
-	  trigger_init = 0;
-  }
-
-  if (trigger_running) {
-	  enableMotor2(40000);
-  } else if (trigger_init) {
-	  enableMotor2(40000);
-  } else {
-	  disableMotor2();
-  }
-
-  old_trigger_hold = trigger_hold;
-
+	motor1_rotation_time ++;
+	motor2_rotation_time ++;
 }
 
-void CCU40_1_IRQHandler(void) {
-  XMC_GPIO_ToggleOutput(LED2);
-  return;
-}
