@@ -2,19 +2,12 @@
 #include <xmc_gpio.h>
 #include <xmc_scu.h>
 #include <xmc1_scu.h>
-#include <xmc_eru.h>
 #include "pwm.h"
 #include "adc.h"
-
+#include "rpm.h"
 #include "config.h"
 
-void stall();
-
 int rotors = 0;
-
-float desired_value = 0;
-
-int stalled = 0;
 
 int main(void) {
   XMC_GPIO_SetMode(LED1, XMC_GPIO_MODE_OUTPUT_PUSH_PULL);
@@ -66,9 +59,8 @@ int main(void) {
   while(1) {
 
 	float foo = (float)adcGetPotBlocking() / 1024.0;
-	desired_value = foo * 23000.0;
 
-	regulateRotors(desiredValue);
+	regulateRotors(MAX_RPM * foo);
 
 	  //rotors = XMC_GPIO_GetInput(BUTTON1);
 	  //if (rotors != 1) {
