@@ -32,8 +32,16 @@ void initAdc() {
 uint16_t adcGetPotBlocking() {
 	  int globres = XMC_VADC_GLOBAL_GetDetailedResult(VADC);
 	  while ((globres & 0x80000000) == 0); // Wait until new result write int the RESULT bits.
-	  int group = (globres & 0xF0000) >> 16; // See which group happened the conversion.
-	  int channel = (globres & 0x1F00000) >> 20; // See which channel happened the conversion.
+	  //int group = (globres & 0xF0000) >> 16; // See which group happened the conversion.
+	  //int channel = (globres & 0x1F00000) >> 20; // See which channel happened the conversion.
 	  int result = (globres & 0xFFFF) >> 2; // Store result in a variable.
 	  return result;
+}
+
+uint16_t adcGetPotNonBlocking() {
+	  int globres = XMC_VADC_GLOBAL_GetDetailedResult(VADC);
+	  if ((globres & 0x80000000) != 0) {
+		  return (globres & 0xFFFF) >> 2;
+	  }
+	  return -1;
 }
