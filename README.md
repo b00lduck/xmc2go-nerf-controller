@@ -42,7 +42,7 @@ make clean && make && sudo make flash
   
 ### GPIO  
  
- - P0_0  -
+ - P0_0  Light barrier ammo
  - P0_5  -
  - P0_6  PWM flywheel motor 1 (AF CCU40)
  - P0_7  PWM flywheel motor 2 (AF CCU41)

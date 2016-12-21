@@ -1,5 +1,6 @@
 #pragma once
 #include <stdint.h>
+#include <xmc_gpio.h>
 #include "config.h"
 #include "pwm.h"
 
@@ -11,7 +12,9 @@ extern uint16_t motor2_rotation_time;
 
 extern uint8_t stalled;
 
-void initRpm();
+extern uint8_t old_tach1;
+extern uint8_t old_tach2;
+
 
 static inline uint16_t getMotor1Rpm() {
 	return motor1_rpm;
@@ -23,7 +26,23 @@ static inline uint16_t getMotor2Rpm() {
 
 static inline void advanceRpmCounter() {
 	motor1_rotation_time ++;
+	uint8_t tach1 = XMC_GPIO_GetInput(MOTOR1_TACHOMETER);
+	if (tach1 != old_tach1) {
+		motor1_rpm = (float)SYSTICKS_PER_MINUTE / (float)motor1_rotation_time;
+		motor1_rotation_time = 0;
+		XMC_GPIO_ToggleOutput(LED1);
+		old_tach1 = tach1;
+	}
+
 	motor2_rotation_time ++;
+	uint8_t tach2 = XMC_GPIO_GetInput(MOTOR2_TACHOMETER);
+	if (tach2 != old_tach2) {
+		motor2_rpm = (float)SYSTICKS_PER_MINUTE / (float)motor2_rotation_time;
+		motor2_rotation_time = 0;
+		XMC_GPIO_ToggleOutput(LED2);
+		old_tach2 = tach2;
+	}
+
 }
 
 static inline void stall() {

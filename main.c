@@ -48,7 +48,6 @@ int main(void) {
 
   initPwm();
   initAdc();
-  initRpm();
 
 //  uint8_t trigger_running = 0;
 //  uint8_t trigger_init = 0;
@@ -56,7 +55,7 @@ int main(void) {
 
   while(1) {
 
-	float foo = (float)adcGetPotBlocking() / 1024.0;
+	float foo = (float)adcGetPotBlocking() / 512.0;
 
 	regulateRotors(MAX_RPM * foo);
 
