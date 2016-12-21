@@ -16,13 +16,15 @@ int main(void) {
   XMC_GPIO_SetMode(LED2, XMC_GPIO_MODE_OUTPUT_PUSH_PULL);
   XMC_GPIO_SetMode(MOTOR1, XMC_GPIO_MODE_OUTPUT_PUSH_PULL);
   XMC_GPIO_SetMode(MOTOR2, XMC_GPIO_MODE_OUTPUT_PUSH_PULL);
+  XMC_GPIO_SetMode(MOTOR3, XMC_GPIO_MODE_OUTPUT_PUSH_PULL);
   XMC_GPIO_SetMode(MOTOR3_BRAKE, XMC_GPIO_MODE_OUTPUT_PUSH_PULL);
 
   XMC_GPIO_SetOutputLow(LED1);
   XMC_GPIO_SetOutputLow(LED2);
   XMC_GPIO_SetOutputLow(MOTOR1);
   XMC_GPIO_SetOutputLow(MOTOR2);
-  XMC_GPIO_SetOutputLow(MOTOR3_BRAKE);
+  XMC_GPIO_SetOutputLow(MOTOR3);
+  XMC_GPIO_SetOutputHigh(MOTOR3_BRAKE);
 
   XMC_GPIO_SetMode(BUTTON1, XMC_GPIO_MODE_INPUT_PULL_UP);
   XMC_GPIO_SetMode(BUTTON2, XMC_GPIO_MODE_INPUT_PULL_UP);
@@ -49,50 +51,68 @@ int main(void) {
   initPwm();
   initAdc();
 
-//  uint8_t trigger_running = 0;
-//  uint8_t trigger_init = 0;
-//  uint8_t old_trigger_hold = 0;
+  uint8_t pusher_state = 0;
 
   while(1) {
 
+	// ROTORS CONTROL
 	float foo = (float)adcGetPotBlocking() / 512.0;
 
-	regulateRotors(MAX_RPM * foo);
+	rotors = XMC_GPIO_GetInput(BUTTON3);
+	if (rotors != 1) {
+		regulateRotors(MAX_RPM * foo);
+	} else {
+		regulateRotors(0);
+	}
 
-	  //rotors = XMC_GPIO_GetInput(BUTTON1);
-	  //if (rotors != 1) {
-		  //enableMotor1();
-	  //} else {
-	  //	  disableMotor1();
-	  //}
+	// PUSHER CONTROL
+	uint8_t trigger = !XMC_GPIO_GetInput(BUTTON2);
+	uint8_t trigger_hold = !XMC_GPIO_GetInput(BUTTON1);
 
-		  /*
-	  int trigger = !XMC_GPIO_GetInput(BUTTON2);
-	  int trigger_hold = !XMC_GPIO_GetInput(BUTTON3);
+	switch (pusher_state) {
 
-	  if (!trigger_running && trigger_hold) {
-		  trigger_init = 1;
-		  trigger_running = 0;
-	  }
+	  	// State 0: resting in "zero" position
+		case 0:
+			XMC_GPIO_SetOutputLow(LED1);
+			XMC_GPIO_SetOutputLow(LED2);
+			disableMotor3();
+			if (trigger) {
+				pusher_state = 1;
+			}
+			break;
 
-	  if (!trigger_hold && trigger && !trigger_running) {
-		  trigger_running = 1;
-		  trigger_init = 0;
-	  }
+		// State 1: shot requested
+		case 1:
+			XMC_GPIO_SetOutputLow(LED2);
+			XMC_GPIO_SetOutputHigh(LED1);
+			enableMotor3(0.3);
+			if (trigger_hold) {
+				pusher_state = 2;
+			}
+			break;
 
-	  if (old_trigger_hold && !trigger_hold) {
-		  trigger_running = 0;
-		  trigger_init = 0;
-	  }
+		// State 2: shot in progress
+		case 2:
+			XMC_GPIO_SetOutputLow(LED1);
+			XMC_GPIO_SetOutputHigh(LED2);
+			enableMotor3(0.3);
+			if (!trigger_hold) {
+				pusher_state = 3;
+			}
+			break;
 
-	  if (trigger_running || trigger_init) {
-		  enableMotor2(40000);
-	  } else {
-		  disableMotor2();
-	  }
+		// State 3: shot done, waiting for trigger cycle
+		case 3:
+			XMC_GPIO_SetOutputHigh(LED1);
+			XMC_GPIO_SetOutputHigh(LED2);
+			disableMotor3();
+			if (!trigger) {
+				pusher_state = 0;
+			}
+			break;
 
-	  old_trigger_hold = trigger_hold;
-	  */
+	}
+
   }
 
 }

@@ -46,7 +46,7 @@ make clean && make && sudo make flash
  - P0_5  -
  - P0_6  PWM flywheel motor 1 (AF CCU40)
  - P0_7  PWM flywheel motor 2 (AF CCU41)
- - P0_8  - 
+ - P0_8  PWM pusher motor     (AF CCU42) 
  - P0_9  braking relay pusher motor
  - P0_14 -
  - P0_15 -

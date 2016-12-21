@@ -48,6 +48,7 @@ void initPwm() {
 
 	  initMotor1();
 	  initMotor2();
+	  initMotor3();
 
 }
 
@@ -101,21 +102,37 @@ void disableMotor2() {
 	XMC_GPIO_SetOutputLow(SLICE1_OUTPUT);
 }
 
-/*
-void enableMotor3(int speed) {
-	XMC_CCU4_SLICE_SetTimerCompareMatch(SLICE1_PTR, speed);
-	XMC_CCU4_EnableShadowTransfer(MODULE_PTR, (uint32_t)(XMC_CCU4_SHADOW_TRANSFER_SLICE_1));
-	if (!motor2enabled) {
-		motor2enabled = 1;
-		XMC_GPIO_SetOutputLow(MOTOR3_BRAKE);
-		XMC_GPIO_Init(SLICE1_OUTPUT, &SLICE_OUTPUT_config);
+void initMotor3() {
+	  XMC_CCU4_SLICE_CompareInit(SLICE2_PTR, &SLICE_config);
+	  XMC_CCU4_SLICE_SetTimerPeriodMatch(SLICE2_PTR, TIMER_PERIOD);
+	  XMC_CCU4_EnableShadowTransfer(MODULE_PTR, (uint32_t)(XMC_CCU4_SHADOW_TRANSFER_SLICE_2));
+	  enableMotor3(TIMER_PERIOD-1);
+	  XMC_CCU4_EnableClock(MODULE_PTR, SLICE2_NUMBER);
+	  XMC_CCU4_SLICE_StartTimer(SLICE2_PTR);
+}
+
+int motor3enabled = 0;
+void enableMotor3(float speed) {
+	XMC_GPIO_SetOutputLow(MOTOR3_BRAKE);
+	// relay dead time
+	for (int i=0;i<50;i++) {
+		 asm volatile ("nop");
+	}
+	XMC_CCU4_SLICE_SetTimerCompareMatch(SLICE2_PTR, speedFloatToInt(speed));
+	XMC_CCU4_EnableShadowTransfer(MODULE_PTR, (uint32_t)(XMC_CCU4_SHADOW_TRANSFER_SLICE_2));
+	if (!motor3enabled) {
+		motor3enabled = 1;
+		XMC_GPIO_Init(SLICE2_OUTPUT, &SLICE_OUTPUT_config);
 	}
 }
 
 void disableMotor3() {
-	motor2enabled = 0;
-	XMC_GPIO_SetMode(SLICE1_OUTPUT, XMC_GPIO_MODE_OUTPUT_PUSH_PULL);
-	XMC_GPIO_SetOutputLow(SLICE1_OUTPUT);
+	motor3enabled = 0;
+	XMC_GPIO_SetMode(SLICE2_OUTPUT, XMC_GPIO_MODE_OUTPUT_PUSH_PULL);
+	XMC_GPIO_SetOutputLow(SLICE2_OUTPUT);
+	// mosfet dead time
+	for (int i=0;i<50;i++) {
+		 asm volatile ("nop");
+	}
 	XMC_GPIO_SetOutputHigh(MOTOR3_BRAKE);
 }
-*/
