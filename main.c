@@ -85,7 +85,7 @@ int main(void) {
 		case 1:
 			XMC_GPIO_SetOutputLow(LED2);
 			XMC_GPIO_SetOutputHigh(LED1);
-			enableMotor3(0.3);
+			enableMotor3(1);
 			if (trigger_hold) {
 				pusher_state = 2;
 			}
@@ -95,7 +95,7 @@ int main(void) {
 		case 2:
 			XMC_GPIO_SetOutputLow(LED1);
 			XMC_GPIO_SetOutputHigh(LED2);
-			enableMotor3(0.3);
+			enableMotor3(0.5);
 			if (!trigger_hold) {
 				pusher_state = 3;
 			}
