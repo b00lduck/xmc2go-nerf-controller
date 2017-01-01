@@ -61,7 +61,7 @@ void initMotor1() {
 	  XMC_CCU4_SLICE_StartTimer(SLICE0_PTR);
 }
 
-int motor1enabled = 0;
+uint8_t motor1enabled = 0;
 void enableMotor1(float speed) {
 	XMC_CCU4_SLICE_SetTimerCompareMatch(SLICE0_PTR, speedFloatToInt(speed));
 	XMC_CCU4_EnableShadowTransfer(MODULE_PTR, (uint32_t)(XMC_CCU4_SHADOW_TRANSFER_SLICE_0));
@@ -86,7 +86,7 @@ void initMotor2() {
 	  XMC_CCU4_SLICE_StartTimer(SLICE1_PTR);
 }
 
-int motor2enabled = 0;
+uint8_t motor2enabled = 0;
 void enableMotor2(float speed) {
 	XMC_CCU4_SLICE_SetTimerCompareMatch(SLICE1_PTR, speedFloatToInt(speed));
 	XMC_CCU4_EnableShadowTransfer(MODULE_PTR, (uint32_t)(XMC_CCU4_SHADOW_TRANSFER_SLICE_1));
@@ -111,7 +111,7 @@ void initMotor3() {
 	  XMC_CCU4_SLICE_StartTimer(SLICE2_PTR);
 }
 
-int motor3enabled = 0;
+uint8_t motor3enabled = 0;
 void enableMotor3(float speed) {
 	XMC_GPIO_SetOutputLow(MOTOR3_BRAKE);
 	// relay dead time

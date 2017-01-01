@@ -4,10 +4,11 @@
 #include <xmc1_scu.h>
 #include "pwm.h"
 #include "adc.h"
-#include "rpm.h"
+#include "pusher.h"
 #include "config.h"
+#include "rotors.h"
 
-int rotors = 0;
+uint8_t general_error = 0;
 
 int main(void) {
 
@@ -31,12 +32,14 @@ int main(void) {
   XMC_GPIO_SetMode(BUTTON3, XMC_GPIO_MODE_INPUT_PULL_UP);
   XMC_GPIO_SetMode(MOTOR1_TACHOMETER, XMC_GPIO_MODE_INPUT_PULL_UP);
   XMC_GPIO_SetMode(MOTOR2_TACHOMETER, XMC_GPIO_MODE_INPUT_PULL_UP);
+  //XMC_GPIO_SetMode(LIGHT_BARRIER1, XMC_GPIO_MODE_INPUT_PULL_UP);
 
   XMC_GPIO_EnableDigitalInput(BUTTON1);
   XMC_GPIO_EnableDigitalInput(BUTTON2);
   XMC_GPIO_EnableDigitalInput(BUTTON3);
   XMC_GPIO_EnableDigitalInput(MOTOR1_TACHOMETER);
   XMC_GPIO_EnableDigitalInput(MOTOR2_TACHOMETER);
+  //XMC_GPIO_EnableDigitalInput(LIGHT_BARRIER1);
 
   // Configure SysTick
   SysTick_Config(SystemCoreClock / SYSTICKS_PER_SECOND);
@@ -51,73 +54,34 @@ int main(void) {
   initPwm();
   initAdc();
 
-  uint8_t pusher_state = 0;
-
   while(1) {
 
-	// ROTORS CONTROL
-	float foo = (float)adcGetPotBlocking() / 512.0;
+	// SECURITY CHECKS
+    if (rotors_stalled) {
+    	general_error = 1;
+    	XMC_GPIO_SetOutputHigh(LED1);
+    }
 
-	rotors = XMC_GPIO_GetInput(BUTTON3);
-	if (rotors != 1) {
-		regulateRotors(MAX_RPM * foo);
-	} else {
-		regulateRotors(0);
-	}
+    if (pusher_stalled) {
+    	general_error = 1;
+    	XMC_GPIO_SetOutputHigh(LED2);
+    }
 
-	// PUSHER CONTROL
-	uint8_t trigger = !XMC_GPIO_GetInput(BUTTON2);
-	uint8_t trigger_hold = !XMC_GPIO_GetInput(BUTTON1);
-
-	switch (pusher_state) {
-
-	  	// State 0: resting in "zero" position
-		case 0:
-			XMC_GPIO_SetOutputLow(LED1);
-			XMC_GPIO_SetOutputLow(LED2);
-			disableMotor3();
-			if (trigger) {
-				pusher_state = 1;
-			}
-			break;
-
-		// State 1: shot requested
-		case 1:
-			XMC_GPIO_SetOutputLow(LED2);
-			XMC_GPIO_SetOutputHigh(LED1);
-			enableMotor3(1);
-			if (trigger_hold) {
-				pusher_state = 2;
-			}
-			break;
-
-		// State 2: shot in progress
-		case 2:
-			XMC_GPIO_SetOutputLow(LED1);
-			XMC_GPIO_SetOutputHigh(LED2);
-			enableMotor3(0.5);
-			if (!trigger_hold) {
-				pusher_state = 3;
-			}
-			break;
-
-		// State 3: shot done, waiting for trigger cycle
-		case 3:
-			XMC_GPIO_SetOutputHigh(LED1);
-			XMC_GPIO_SetOutputHigh(LED2);
-			disableMotor3();
-			if (!trigger) {
-				pusher_state = 0;
-			}
-			break;
-
-	}
-
+    //if (general_error) {
+    //	regulateRotors(0);
+	//	disableMotor3();
+	//	pusher_state = 0;
+	//} else {
+		uint8_t ammo_ready = XMC_GPIO_GetInput(LIGHT_BARRIER1);
+		processRotors(ammo_ready);
+		processPusher(ammo_ready);
+	//}
   }
-
 }
 
+
 void SysTick_Handler(void) {
-	advanceRpmCounter();
+	advanceRotorsCounter();
+	advancePusherCounter();
 }
 

@@ -13,3 +13,7 @@ void disableMotor2();
 void initMotor3();
 void enableMotor3(float speed);
 void disableMotor3();
+
+extern uint8_t motor1enabled;
+extern uint8_t motor2enabled;
+extern uint8_t motor3enabled;
