@@ -71,9 +71,8 @@ static inline void regulateRotors(uint16_t desired_rpm) {
 	}
 }
 
-static inline void processRotors(uint8_t ammo_ready) {
+static inline void processRotors(float pot_value, uint8_t ammo_ready) {
 	uint8_t rotors = XMC_GPIO_GetInput(BUTTON3);
-	float pot_value = (float)adcGetPotBlocking() / 512.0;
 	if ((rotors != 1) && (ammo_ready)) {
 		regulateRotors(MAX_RPM * pot_value);
 	} else {

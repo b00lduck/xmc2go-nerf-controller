@@ -6,7 +6,7 @@ void initAdc() {
 	  XMC_VADC_GLOBAL_CONFIG_t adc_glob_handl = {
 			  .class1 = {
 					  .conversion_mode_standard = XMC_VADC_CONVMODE_8BIT,
-					  .sample_time_std_conv = 3,
+					  .sample_time_std_conv = 1,
 			  }
 	  };
 
@@ -25,23 +25,19 @@ void initAdc() {
 	  XMC_VADC_GLOBAL_StartupCalibration(VADC);
 	  XMC_VADC_GLOBAL_BackgroundInit(VADC, &adc_bg_handl) ;
 	  XMC_VADC_GLOBAL_BackgroundAddChannelToSequence(VADC, 0, 0);
+	  XMC_VADC_GLOBAL_BackgroundAddChannelToSequence(VADC, 0, 2);
 	  XMC_VADC_GLOBAL_BackgroundEnableContinuousMode(VADC);
 	  XMC_VADC_GLOBAL_BackgroundTriggerConversion(VADC);
 }
 
-uint16_t adcGetPotBlocking() {
-	  int globres = XMC_VADC_GLOBAL_GetDetailedResult(VADC);
-	  while ((globres & 0x80000000) == 0); // Wait until new result write int the RESULT bits.
-	  //int group = (globres & 0xF0000) >> 16; // See which group happened the conversion.
-	  //int channel = (globres & 0x1F00000) >> 20; // See which channel happened the conversion.
-	  int result = (globres & 0xFFFF) >> 2; // Store result in a variable.
-	  return result;
-}
-
-uint16_t adcGetPotNonBlocking() {
-	  int globres = XMC_VADC_GLOBAL_GetDetailedResult(VADC);
-	  if ((globres & 0x80000000) != 0) {
-		  return (globres & 0xFFFF) >> 2;
-	  }
-	  return -1;
+void adcProcess(float *pot, int *battery) {
+	int adc_globres = XMC_VADC_GLOBAL_GetDetailedResult(VADC);
+	while ((adc_globres & 0x80000000) == 0);
+	int channel = (adc_globres & 0x1F00000) >> 20;
+	int result = (adc_globres & 0xFFFF) >> 2;
+	if (channel == 0) {
+		*pot = (float)result / 512.0;
+	} else if (channel == 2) {
+		*battery = result;
+	}
 }

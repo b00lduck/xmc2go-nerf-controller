@@ -2,6 +2,8 @@
 
 #define LED1 							P1_1
 #define LED2 							P1_0
+#define LED3							P0_14
+#define LED4							P0_15
 
 #define MOTOR1 							P0_6
 #define MOTOR1_TACHOMETER 				P2_7
@@ -13,8 +15,9 @@
 #define MOTOR3_BRAKE P0_9
 
 #define POT1 P2_6
+#define BATT_SENSE P2_9
 
-#define BUTTON1 P2_9
+#define BUTTON1 P0_5
 #define BUTTON2 P2_0
 #define BUTTON3 P2_11
 
@@ -43,3 +46,6 @@
 
 #define MAX_RPM 28000
 #define PUSHER_POWER 0.4
+
+#define BATTERY_LOW_COUNTER_LIMIT 5000
+#define BATTERY_LOW_THRESHOLD 620

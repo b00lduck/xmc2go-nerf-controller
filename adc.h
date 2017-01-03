@@ -2,4 +2,4 @@
 #include <stdint.h>
 
 void initAdc();
-uint16_t adcGetPotBlocking();
+void adcProcess(float*, int*);
