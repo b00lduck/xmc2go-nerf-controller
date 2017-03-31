@@ -21,6 +21,12 @@ static inline void processPusher(uint8_t ammo_ready) {
 	uint8_t trigger = !XMC_GPIO_GetInput(BUTTON2);
 	uint8_t trigger_hold = !XMC_GPIO_GetInput(BUTTON1);
 
+	if (trigger) {
+		XMC_GPIO_SetOutputHigh(LED1);
+	} else {
+		XMC_GPIO_SetOutputLow(LED1);
+	}
+
 	switch (pusher_state) {
 
 	  	// State 0: resting in "zero" position

@@ -34,7 +34,7 @@ int main(void) {
   XMC_GPIO_SetMode(MOTOR1_TACHOMETER, XMC_GPIO_MODE_INPUT_PULL_UP);
   XMC_GPIO_SetMode(MOTOR2_TACHOMETER, XMC_GPIO_MODE_INPUT_PULL_UP);
 
-  XMC_GPIO_SetMode(BUTTON3, XMC_GPIO_MODE_INPUT_TRISTATE);
+  XMC_GPIO_SetMode(BUTTON1, XMC_GPIO_MODE_INPUT_TRISTATE);
   XMC_GPIO_SetMode(LIGHT_BARRIER1, XMC_GPIO_MODE_INPUT_TRISTATE);
 
   XMC_GPIO_EnableDigitalInput(BUTTON2);
@@ -78,7 +78,7 @@ int main(void) {
     }
 
     if (pusher_stalled) {
-    	general_error = 1;
+    	//general_error = 1;
     }
 
 	if (battery < BATTERY_LOW_THRESHOLD) {

@@ -2,8 +2,8 @@
 
 #define LED1 							P1_1
 #define LED2 							P1_0
-#define LED3							P0_14
-#define LED4							P0_15
+#define LED3							P0_15
+#define LED4							P0_14
 
 #define MOTOR1 							P0_6
 #define MOTOR1_TACHOMETER 				P2_7
