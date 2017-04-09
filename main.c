@@ -14,10 +14,10 @@ uint8_t general_error = 0;
 int main(void) {
 
   // Configure GPIOs
-  XMC_GPIO_SetMode(LED1, XMC_GPIO_MODE_OUTPUT_PUSH_PULL);
-  XMC_GPIO_SetMode(LED2, XMC_GPIO_MODE_OUTPUT_PUSH_PULL);
-  XMC_GPIO_SetMode(LED3, XMC_GPIO_MODE_OUTPUT_PUSH_PULL);
-  XMC_GPIO_SetMode(LED4, XMC_GPIO_MODE_OUTPUT_PUSH_PULL);
+  XMC_GPIO_SetMode(LED_RED, XMC_GPIO_MODE_OUTPUT_PUSH_PULL);
+  XMC_GPIO_SetMode(LED_ORANGE, XMC_GPIO_MODE_OUTPUT_PUSH_PULL);
+  XMC_GPIO_SetMode(LED_YELLOW, XMC_GPIO_MODE_OUTPUT_PUSH_PULL);
+  XMC_GPIO_SetMode(LED_GREEN, XMC_GPIO_MODE_OUTPUT_PUSH_PULL);
 
   XMC_GPIO_SetMode(MOTOR1, XMC_GPIO_MODE_OUTPUT_PUSH_PULL);
   XMC_GPIO_SetMode(MOTOR2, XMC_GPIO_MODE_OUTPUT_PUSH_PULL);
@@ -53,7 +53,7 @@ int main(void) {
   XMC_SCU_CLOCK_Init(&clock_config);
 
   for (uint32_t i=0;i<200000;i++) {
-	  XMC_GPIO_SetOutputHigh(LED1);
+	  XMC_GPIO_SetOutputHigh(LED_ORANGE);
   }
 
   initPwm();
@@ -64,21 +64,21 @@ int main(void) {
   int battery = 0;
   uint16_t low_battery_counter = 0;
 
-  XMC_GPIO_SetOutputLow(LED1);
-  XMC_GPIO_SetOutputHigh(LED4);
+  XMC_GPIO_SetOutputLow(LED_ORANGE);
+  XMC_GPIO_SetOutputHigh(LED_GREEN);
 
   while(1) {
 
 	// Read ADC values
     adcProcess(&pot_value, &battery);
 
-	// Securtiy checks/shutdown
+	// Security checks/shutdown
     if (rotors_stalled) {
     	general_error = 1;
     }
 
     if (pusher_stalled) {
-    	//general_error = 1;
+    	general_error = 1;
     }
 
 	if (battery < BATTERY_LOW_THRESHOLD) {
@@ -94,14 +94,26 @@ int main(void) {
     	regulateRotors(0);
 		disableMotor3();
 		pusher_state = 0;
-		XMC_GPIO_SetOutputLow(LED4);
-		XMC_GPIO_SetOutputLow(LED1);
-		XMC_GPIO_SetOutputLow(LED3);
-		XMC_GPIO_SetOutputHigh(LED2);
+		XMC_GPIO_SetOutputLow(LED_GREEN);
+		XMC_GPIO_SetOutputLow(LED_RED);
+		XMC_GPIO_SetOutputLow(LED_YELLOW);
+		XMC_GPIO_SetOutputHigh(LED_ORANGE);
 	} else {
 		uint8_t ammo_ready = XMC_GPIO_GetInput(LIGHT_BARRIER1);
-		processRotors(pot_value, ammo_ready);
-		processPusher(ammo_ready);
+
+		float power_factor;
+		uint8_t pusher_mode;
+		if (pot_value <= 0.5) {
+			power_factor = 1 - (pot_value * 2.0);
+			pusher_mode = 0;
+		} else {
+			power_factor = (pot_value - 0.5) * 2.0;
+			pusher_mode = 1;
+		}
+		uint32_t desired_rpm = MIN_RPM + (MAX_RPM -MIN_RPM) * power_factor;
+
+		processRotors(desired_rpm, ammo_ready);
+		processPusher(pusher_mode, ammo_ready);
 	}
   }
 }

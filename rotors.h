@@ -16,6 +16,7 @@ extern uint8_t rotors_stalled;
 extern uint8_t old_tach1;
 extern uint8_t old_tach2;
 
+extern uint8_t old_rotor_state;
 
 static inline void advanceRotorsCounter() {
 	if (motor1enabled) {
@@ -39,14 +40,18 @@ static inline void advanceRotorsCounter() {
 	}
 }
 
-static inline void stallRotors() {
+static inline void resetRotors() {
 	motor1_rotation_time = 0;
 	motor1_rpm = 0;
 	motor2_rotation_time = 0;
 	motor2_rpm = 0;
-	rotors_stalled = 1;
 	disableMotor1();
 	disableMotor2();
+}
+
+static inline void stallRotors() {
+	rotors_stalled = 1;
+	resetRotors();
 }
 
 static inline void regulateRotors(uint16_t desired_rpm) {
@@ -62,19 +67,18 @@ static inline void regulateRotors(uint16_t desired_rpm) {
 			enableMotor2(output2);
 	  	}
 	} else {
-		motor1_rotation_time = 0;
-		motor1_rpm = 0;
-		motor2_rotation_time = 0;
-		motor2_rpm = 0;
-		disableMotor1();
-		disableMotor2();
+		resetRotors();
 	}
 }
 
-static inline void processRotors(float pot_value, uint8_t ammo_ready) {
+static inline void processRotors(float desired_rpm, uint8_t ammo_ready) {
 	uint8_t rotors = XMC_GPIO_GetInput(BUTTON3);
+	if (old_rotor_state != rotors) {
+		old_rotor_state = rotors;
+		resetRotors();
+	}
 	if ((rotors != 1) && (ammo_ready)) {
-		regulateRotors(MAX_RPM * pot_value);
+		regulateRotors(desired_rpm);
 	} else {
 		regulateRotors(0);
 	}

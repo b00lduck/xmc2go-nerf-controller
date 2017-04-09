@@ -14,4 +14,6 @@ uint8_t old_tach2 = 0;
 
 uint8_t rotors_stalled = 0;
 
+uint8_t old_rotor_state = 0;
+
 

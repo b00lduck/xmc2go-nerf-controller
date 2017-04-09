@@ -36,7 +36,7 @@ void adcProcess(float *pot, int *battery) {
 	int channel = (adc_globres & 0x1F00000) >> 20;
 	int result = (adc_globres & 0xFFFF) >> 2;
 	if (channel == 0) {
-		*pot = (float)result / 512.0;
+		*pot = (float)result / 1024.0;
 	} else if (channel == 2) {
 		*battery = result;
 	}

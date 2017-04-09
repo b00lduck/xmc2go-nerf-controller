@@ -1,9 +1,9 @@
 #pragma once
 
-#define LED1 							P1_1
-#define LED2 							P1_0
-#define LED3							P0_15
-#define LED4							P0_14
+#define LED_RED 						P1_1
+#define LED_ORANGE 						P1_0
+#define LED_YELLOW						P0_15
+#define LED_GREEN						P0_14
 
 #define MOTOR1 							P0_6
 #define MOTOR1_TACHOMETER 				P2_7
@@ -44,8 +44,11 @@
 #define SYSTICKS_PER_SECOND (1 << SYSTICK_SHIFTER)
 #define SYSTICKS_PER_MINUTE (SYSTICKS_PER_SECOND * 60)
 
+#define MIN_RPM 6000
 #define MAX_RPM 28000
-#define PUSHER_POWER 0.4
+#define PUSHER_POWER_SINGLE 0.4
+#define PUSHER_POWER_FULL 0.6
+#define PUSHER_POWER_RETURN 0.3
 
 #define BATTERY_LOW_COUNTER_LIMIT 5000
 #define BATTERY_LOW_THRESHOLD 620
